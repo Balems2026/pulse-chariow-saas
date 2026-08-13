@@ -12,8 +12,13 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   plan          TEXT NOT NULL DEFAULT 'free',
   plan_expires_at TIMESTAMPTZ,
+  pro_activated_at TIMESTAMPTZ,
+  pro_product_id TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_activated_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_product_id TEXT;
 
 CREATE TABLE IF NOT EXISTS usage_counters (
   user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

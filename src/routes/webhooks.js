@@ -7,6 +7,8 @@ const router = express.Router();
 const SIGNATURE_HEADER = (process.env.WEBHOOK_SIGNATURE_HEADER || "x-chariow-signature").toLowerCase();
 const PRO_CYCLE_DAYS = parseInt(process.env.PRO_CYCLE_DAYS || "30", 10);
 const YEARLY_CYCLE_DAYS = 365;
+const MONTHLY_PRODUCT_ID = process.env.CHARIOW_PRO_MONTHLY_PRODUCT_ID || "";
+const YEARLY_PRODUCT_ID = process.env.CHARIOW_PRO_YEARLY_PRODUCT_ID || "";
 
 // IMPORTANT : le nom exact de l'en-tête de signature et l'algorithme dépendent de la
 // configuration de ton Pulse dans le tableau de bord Chariow. Vérifie-le là-bas et
@@ -77,6 +79,19 @@ router.post("/chariow", express.raw({ type: "*/*" }), async (req, res) => {
     }
   }
 
+  const productId = String(
+    payload?.data?.product?.id ||
+    payload?.data?.product_id ||
+    payload?.product_id ||
+    ""
+  );
+
+  // Si les IDs produits sont configurés, le webhook n'active que les offres Pro connues.
+  const knownProductIds = [MONTHLY_PRODUCT_ID, YEARLY_PRODUCT_ID].filter(Boolean);
+  if (knownProductIds.length && (!productId || !knownProductIds.includes(productId))) {
+    return res.status(200).json({ ok: true, note: "product_ignored" });
+  }
+
   // On ne traite que les ventes finalisées / paiements reçus.
   const relevant = !eventType || /completed|paid|sale|purchase|r[ée]gl[ée]/.test(eventType);
   if (!relevant) return res.status(200).json({ ok: true, note: "event_ignored" });
@@ -95,12 +110,16 @@ router.post("/chariow", express.raw({ type: "*/*" }), async (req, res) => {
     return res.status(200).json({ ok: true, note: "user_not_found" });
   }
 
-  const cycleDays = isYearlyPurchase(payload) ? YEARLY_CYCLE_DAYS : PRO_CYCLE_DAYS;
+  const yearly = isYearlyPurchase(payload) || productId === YEARLY_PRODUCT_ID;
+  const cycleDays = yearly ? YEARLY_CYCLE_DAYS : PRO_CYCLE_DAYS;
   const user = rows[0];
   const base = user.plan_expires_at && new Date(user.plan_expires_at) > new Date() ? new Date(user.plan_expires_at) : new Date();
   const newExpiry = new Date(base.getTime() + cycleDays * 24 * 60 * 60 * 1000);
 
-  await pool.query("UPDATE users SET plan = 'pro', plan_expires_at = $1 WHERE id = $2", [newExpiry, user.id]);
+  await pool.query(
+    "UPDATE users SET plan = 'pro', plan_expires_at = $1, pro_activated_at = now(), pro_product_id = $2 WHERE id = $3",
+    [newExpiry, productId || null, user.id]
+  );
   console.log(`Abonnement Pro activé pour ${email} jusqu'au ${newExpiry.toISOString()}.`);
 
   res.status(200).json({ ok: true });

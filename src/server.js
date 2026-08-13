@@ -6,6 +6,7 @@ const { initSchema } = require("./db");
 const authRoutes = require("./routes/auth");
 const generateRoutes = require("./routes/generate");
 const webhookRoutes = require("./routes/webhooks");
+const proRoutes = require("./routes/pro");
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(express.json());
 app.get("/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/generate", generateRoutes);
+app.use("/api/pro", proRoutes);
 
 const PORT = process.env.PORT || 3000;
 
