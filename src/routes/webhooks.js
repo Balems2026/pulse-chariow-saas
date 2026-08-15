@@ -24,9 +24,9 @@ return false;
   if (!signature.startswith(prefix)) {
   return false;
   }
-  const receivedSignature = signature.slice(prefix.lenght) ;
+  const receivedSignature = signature.slice(prefix.length) ;
   const expectedSignature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
-  if (receiveedSignature.lenght ! == expectedSignature.lenght) {
+  if (receivedSignature.length !== expectedSignature.length) {
   return false;
   } 
   try {
