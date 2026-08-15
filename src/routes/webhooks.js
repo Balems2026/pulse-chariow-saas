@@ -16,11 +16,21 @@ const YEARLY_PRODUCT_ID = process.env.CHARIOW_PRO_YEARLY_PRODUCT_ID || "";
 // hexadécimal du corps brut de la requête, calculé avec CHARIOW_WEBHOOK_SECRET —
 // c'est le standard le plus répandu (Stripe, GitHub, etc.) si Chariow ne précise pas autre chose.
 function isValidSignature(rawBody, signature) {
-  if (!process.env.CHARIOW_WEBHOOK_SECRET) return true; // pas de secret configuré = pas de vérification (déconseillé en prod)
-  if (!signature) return false;
-  const expected = crypto.createHmac("sha256", process.env.CHARIOW_WEBHOOK_SECRET).update(rawBody).digest("hex");
+  const secret = 
+ process.env.CHARIOW_WEBHOOK_SECRET; 
+  if (!secret || !signature) 
+return false;
+  const prefix = "sha256=";
+  if (!signature.startswith(prefix)) {
+  return false;
+  }
+  const receivedSignature = signature.slice(prefix.lenght) ;
+  const expectedSignature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  if (receiveedSignature.lenght ! == expectedSignature.lenght) {
+  return false;
+  } 
   try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    return crypto.timingSafeEqual(Buffer.from(receiveSignature,"hex"), Buffer.from(expectedSignature,"hex"));
   } catch {
     return false;
   }
@@ -53,7 +63,7 @@ function isYearlyPurchase(payload) {
 
 router.post("/chariow", express.raw({ type: "*/*" }), async (req, res) => {
   const rawBody = req.body instanceof Buffer ? req.body.toString("utf8") : JSON.stringify(req.body);
-  const signature = req.headers[SIGNATURE_HEADER];
+  const signature = req.headers["x-chariow-signature"];
 
   if (!isValidSignature(rawBody, signature)) {
     console.warn("Webhook Chariow rejeté : signature invalide.");
