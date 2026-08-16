@@ -21,7 +21,9 @@ function isValidSignature(rawBody, signature) {
   if (!secret || !signature) {
 return false;
   }
-  const signatureValue = Array.isArray(signature) ? signature[0] : String(signature);
+  const signatureValue = 
+    typeof signature === "string" ? signature : Array.isArray(signature) && 
+  typeof signature[0] === "string" ? signature[0] : "";
   
   const prefix = "sha256=";
   
