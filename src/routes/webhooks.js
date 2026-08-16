@@ -18,8 +18,9 @@ const YEARLY_PRODUCT_ID = process.env.CHARIOW_PRO_YEARLY_PRODUCT_ID || "";
 function isValidSignature(rawBody, signature) {
   const secret = 
  process.env.CHARIOW_WEBHOOK_SECRET; 
-  if (!secret || !signature) 
+  if (!secret || !signature) {
 return false;
+  }
   const prefix = "sha256=";
   if (!signature.startswith(prefix)) {
   return false;
@@ -30,7 +31,7 @@ return false;
   return false;
   } 
   try {
-    return crypto.timingSafeEqual(Buffer.from(receiveSignature,"hex"), Buffer.from(expectedSignature,"hex"));
+    return crypto.timingSafeEqual(Buffer.from(receivedSignature,"hex"), Buffer.from(expectedSignature,"hex"));
   } catch {
     return false;
   }
@@ -62,7 +63,7 @@ function isYearlyPurchase(payload) {
 }
 
 router.post("/chariow", express.raw({ type: "*/*" }), async (req, res) => {
-  const rawBody = req.body instanceof Buffer ? req.body.toString("utf8") : JSON.stringify(req.body);
+  const rawBody = req.body.toString("utf8");
   const signature = req.headers["x-chariow-signature"];
 
   if (!isValidSignature(rawBody, signature)) {
