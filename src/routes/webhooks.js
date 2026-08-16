@@ -21,11 +21,14 @@ function isValidSignature(rawBody, signature) {
   if (!secret || !signature) {
 return false;
   }
+  const signatureValue = Array.isArray(signature) ? signature[0] : String(signature);
+  
   const prefix = "sha256=";
-  if (!signature.startswith(prefix)) {
+  
+  if (!signatureValue.startswith(prefix)) {
   return false;
   }
-  const receivedSignature = signature.slice(prefix.length) ;
+  const receivedSignature = signatureValue.slice(prefix.length) ;
   const expectedSignature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
   if (receivedSignature.length !== expectedSignature.length) {
   return false;
