@@ -27,7 +27,7 @@ return false;
   
   const prefix = "sha256=";
   
-  if (!signatureValue.startswith(prefix)) {
+  if (!signatureValue.startsWith(prefix)) {
   return false;
   }
   const receivedSignature = signatureValue.slice(prefix.length) ;
