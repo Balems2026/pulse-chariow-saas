@@ -1,7 +1,7 @@
 const { pool } = require("./db");
 
 const FREE_MONTHLY_QUOTA = parseInt(process.env.FREE_MONTHLY_QUOTA || "15", 10);
-const PRO_MONTHLY_QUOTA = parseInt(process.env.PRO_MONTHLY_QUOTA || "300", 10);
+const PRO_MONTHLY_QUOTA = parseInt(process.env.PRO_MONTHLY_QUOTA || "500", 10);
 
 function currentPeriod() {
   const d = new Date();
