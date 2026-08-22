@@ -7,6 +7,7 @@ const authRoutes = require("./routes/auth");
 const generateRoutes = require("./routes/generate");
 const webhookRoutes = require("./routes/webhooks");
 const proRoutes = require("./routes/pro");
+const chariowRoutes = require("./routes/chariow");
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/generate", generateRoutes);
 app.use("/api/pro", proRoutes);
+app.use("/api/chariow", chariowRoutes);
 
 const PORT = process.env.PORT || 3000;
 
