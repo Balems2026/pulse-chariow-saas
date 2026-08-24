@@ -38,6 +38,8 @@ router.get("/sales", requireAuth, async (req, res) => {
       data = { raw: text };
     }
 
+    console.log("Réponse brute API Chariow :", data);
+
     if (!response.ok) {
       console.error("Erreur API Chariow :", response.status, data);
 
