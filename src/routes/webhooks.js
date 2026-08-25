@@ -95,6 +95,19 @@ router.post("/chariow", express.raw({ type: "*/*" }), async (req, res) => {
     }
   }
 
+  console.log("========== WEBHOOK CHARIOW ==========");
+  console.log("EMAIL PAYLOAD :",
+  extractEmail(payload));
+  console.log(PRODUCT PAYLOAD :",
+  payload?.data?.product?.id ||
+  payload?.data?.product_id ||
+  payload?.product_id ||
+  null
+  );
+  console.log("EVENT TYPE :",
+  payload?.type || payload?.event || null);
+  console.log("====================================");
+
   const productId = String(
     payload?.data?.product?.id ||
     payload?.data?.product_id ||
