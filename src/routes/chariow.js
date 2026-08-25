@@ -38,7 +38,7 @@ router.get("/sales", requireAuth, async (req, res) => {
       data = { raw: text };
     }
 
-    console.log("Réponse brute API Chariow :", data);
+    console.log("STRUCTURE COMPLETE CHARIOW :", JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       console.error("Erreur API Chariow :", response.status, data);
