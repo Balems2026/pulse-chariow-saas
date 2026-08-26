@@ -101,7 +101,7 @@ router.post("/chariow", express.raw({ type: "*/*" }), async (req, res) => {
   extractEmail(payload));
   
   console.log("DATA KEYS :",
-  Object.keys(payload?.data? ||
+  Object.keys(payload?.data ||
   {})
   );
 
@@ -115,6 +115,7 @@ router.post("/chariow", express.raw({ type: "*/*" }), async (req, res) => {
   payload?.event || 
   null
   );
+  console.log("====================================")
 
   const productId = String(
     payload?.data?.product?.id ||
