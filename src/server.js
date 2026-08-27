@@ -1,37 +1,23 @@
 require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const { initSchema } = require("./db");
-
-const authRoutes = require("./routes/auth");
-const generateRoutes = require("./routes/generate");
-const webhookRoutes = require("./routes/webhooks");
-const proRoutes = require("./routes/pro");
-const chariowRoutes = require("./routes/chariow");
-
-const app = express();
-
-app.use(cors({ origin: process.env.CORS_ORIGIN === "*" ? true : process.env.CORS_ORIGIN?.split(",") }));
-
-// Le webhook Chariow a besoin du corps brut pour la vérification de signature,
-// donc sa route est montée AVANT express.json() et gère elle-même le parsing.
-app.use("/api/webhooks", webhookRoutes);
-
-app.use(express.json());
-
-app.get("/health", (req, res) => res.json({ ok: true }));
-app.use("/api/auth", authRoutes);
-app.use("/api/generate", generateRoutes);
-app.use("/api/pro", proRoutes);
-app.use("/api/chariow", chariowRoutes);
-
-const PORT = process.env.PORT || 3000;
-
-initSchema()
-  .then(() => {
-    app.listen(PORT, () => console.log(`AI Sales Cameroun backend en écoute sur le port ${PORT}`));
-  })
-  .catch((err) => {
-    console.error("Impossible d'initialiser la base de données :", err);
-    process.exit(1);
-  });
+const express=require("express"),cors=require("cors"),{initSchema}=require("./db");
+const app=express();
+const origins=process.env.CORS_ORIGIN||"*";
+app.use(cors({origin:origins==="*" ? true : origins.split(",").map(x=>x.trim())}));
+app.use("/api/webhooks",require("./routes/webhooks"));
+app.use(express.json({limit:"2mb"}));
+app.get("/health",(req,res)=>res.json({ok:true}));
+app.get("/",(req,res)=>res.json({name:"AI Sales Cameroun",ok:true}));
+app.use("/api/auth",require("./routes/auth"));
+app.use("/api/generate",require("./routes/generate"));
+app.use("/api/crm",require("./routes/crm"));
+app.use("/api/products",require("./routes/products"));
+app.use("/api/faqs",require("./routes/faqs"));
+app.use("/api/sequences",require("./routes/sequences"));
+app.use("/api/tasks",require("./routes/tasks"));
+app.use("/api/analytics",require("./routes/analytics"));
+app.use("/api/whatsapp",require("./routes/whatsapp"));
+app.use("/api/admin",require("./routes/admin"));
+app.use("/api/chariow",require("./routes/chariow"));
+const PORT=process.env.PORT||8080;
+initSchema().then(()=>app.listen(PORT,()=>console.log(`AI Sales Cameroun backend en écoute sur le port ${PORT}`))).catch(e=>{console.error("Impossible d'initialiser la base de données :",e);process.exit(1);});
+module.exports=app;

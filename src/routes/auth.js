@@ -1,54 +1,9 @@
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const { pool } = require("../db");
-const { signToken, requireAuth } = require("../auth");
-const { summarize, getUser } = require("../plan");
-
-const router = express.Router();
-
-function validEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
-}
-
-router.post("/register", async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!validEmail(email)) return res.status(400).json({ error: "invalid_email", message: "E-mail invalide." });
-  if (!password || password.length < 8) {
-    return res.status(400).json({ error: "weak_password", message: "Le mot de passe doit contenir au moins 8 caractères." });
-  }
-
-  const existing = await pool.query("SELECT id FROM users WHERE email = $1", [email.toLowerCase()]);
-  if (existing.rows.length) {
-    return res.status(409).json({ error: "email_taken", message: "Un compte existe déjà avec cet e-mail." });
-  }
-
-  const hash = await bcrypt.hash(password, 10);
-  const { rows } = await pool.query(
-    "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING *",
-    [email.toLowerCase(), hash]
-  );
-  const user = rows[0];
-  const token = signToken(user);
-  res.json({ token, user: await summarize(user) });
-});
-
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body || {};
-  const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [(email || "").toLowerCase()]);
-  const user = rows[0];
-  if (!user) return res.status(401).json({ error: "invalid_credentials", message: "E-mail ou mot de passe incorrect." });
-
-  const ok = await bcrypt.compare(password || "", user.password_hash);
-  if (!ok) return res.status(401).json({ error: "invalid_credentials", message: "E-mail ou mot de passe incorrect." });
-
-  const token = signToken(user);
-  res.json({ token, user: await summarize(user) });
-});
-
-router.get("/me", requireAuth, async (req, res) => {
-  const user = await getUser(req.userId);
-  if (!user) return res.status(404).json({ error: "not_found" });
-  res.json({ user: await summarize(user) });
-});
-
-module.exports = router;
+const express=require("express"),bcrypt=require("bcryptjs"),crypto=require("crypto");
+const {pool}=require("../db"),{signToken,requireAuth}=require("../auth"),{summarize,getUser}=require("../plan");
+const router=express.Router();
+router.post("/register",async(req,res)=>{try{const{email,password}=req.body||{};if(!/^\S+@\S+\.\S+$/.test(email||""))return res.status(400).json({message:"E-mail invalide."});if(!password||password.length<8)return res.status(400).json({message:"Le mot de passe doit contenir au moins 8 caractères."});const e=email.toLowerCase();if((await pool.query("SELECT id FROM users WHERE email=$1",[e])).rows.length)return res.status(409).json({message:"Un compte existe déjà avec cet e-mail."});const h=await bcrypt.hash(password,10);const{rows}=await pool.query("INSERT INTO users(email,password_hash) VALUES($1,$2) RETURNING *",[e,h]);res.json({token:signToken(rows[0]),user:await summarize(rows[0])});}catch(e){console.error(e);res.status(500).json({message:"Erreur serveur."});}});
+router.post("/login",async(req,res)=>{try{const{email,password}=req.body||{},q=await pool.query("SELECT * FROM users WHERE email=$1",[(email||"").toLowerCase()]),u=q.rows[0];if(!u||!(await bcrypt.compare(password||"",u.password_hash)))return res.status(401).json({message:"E-mail ou mot de passe incorrect."});if(u.suspended)return res.status(403).json({message:"Ce compte est suspendu."});await pool.query("UPDATE users SET last_login_at=NOW() WHERE id=$1",[u.id]);const fresh=await getUser(u.id);res.json({token:signToken(fresh),user:await summarize(fresh)});}catch(e){console.error(e);res.status(500).json({message:"Erreur serveur."});}});
+router.get("/me",requireAuth,async(req,res)=>{try{const u=await getUser(req.userId);if(!u)return res.status(404).json({message:"Compte introuvable."});res.json({user:await summarize(u)});}catch(e){res.status(500).json({message:"Erreur serveur."});}});
+router.post("/forgot-password",async(req,res)=>{try{const e=String(req.body?.email||"").toLowerCase().trim(),q=await pool.query("SELECT id FROM users WHERE email=$1",[e]);if(q.rows.length){const raw=crypto.randomBytes(32).toString("hex"),h=crypto.createHash("sha256").update(raw).digest("hex");await pool.query("INSERT INTO password_resets(user_id,token_hash,expires_at) VALUES($1,$2,NOW()+INTERVAL '30 minutes')",[q.rows[0].id,h]);console.log("RESET TOKEN:",raw);}res.json({ok:true,message:"Si un compte existe, la procédure de réinitialisation est prête."});}catch(e){res.status(500).json({ok:false,message:"Erreur serveur."});}});
+router.post("/reset-password",async(req,res)=>{try{const{token,password}=req.body||{};if(!token||!password||password.length<8)return res.status(400).json({ok:false,message:"Token ou mot de passe invalide."});const h=crypto.createHash("sha256").update(token).digest("hex"),q=await pool.query("SELECT * FROM password_resets WHERE token_hash=$1 AND used_at IS NULL AND expires_at>NOW() ORDER BY id DESC LIMIT 1",[h]);if(!q.rows.length)return res.status(400).json({ok:false,message:"Lien invalide ou expiré."});await pool.query("UPDATE users SET password_hash=$1 WHERE id=$2",[await bcrypt.hash(password,10),q.rows[0].user_id]);await pool.query("UPDATE password_resets SET used_at=NOW() WHERE id=$1",[q.rows[0].id]);res.json({ok:true,message:"Mot de passe mis à jour."});}catch(e){res.status(500).json({ok:false,message:"Erreur serveur."});}});
+module.exports=router;

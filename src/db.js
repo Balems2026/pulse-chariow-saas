@@ -1,40 +1,81 @@
-const { Pool } = require("pg");
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes("localhost") ? false : { rejectUnauthorized: false },
+const {Pool}=require("pg");
+const pool=new Pool({
+  connectionString:process.env.DATABASE_URL,
+  ssl:process.env.DATABASE_URL && !/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL)?{rejectUnauthorized:false}:undefined
 });
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS users (
-  id            SERIAL PRIMARY KEY,
-  email         TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  plan          TEXT NOT NULL DEFAULT 'free',
-  plan_expires_at TIMESTAMPTZ,
-  pro_activated_at TIMESTAMPTZ,
-  pro_product_id TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+async function initSchema(){
+  await pool.query(`
+CREATE TABLE IF NOT EXISTS users(
+ id BIGSERIAL PRIMARY KEY,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,
+ plan TEXT NOT NULL DEFAULT 'free' CHECK(plan IN ('free','pro','business')),
+ plan_expires_at TIMESTAMPTZ,suspended BOOLEAN NOT NULL DEFAULT FALSE,
+ is_admin BOOLEAN NOT NULL DEFAULT FALSE,last_login_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_activated_at TIMESTAMPTZ;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_product_id TEXT;
-
-CREATE TABLE IF NOT EXISTS usage_counters (
-  user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  period   TEXT NOT NULL,
-  count    INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (user_id, period)
+CREATE TABLE IF NOT EXISTS usage_monthly(
+ user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,period TEXT NOT NULL,
+ count INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(user_id,period)
 );
-
-CREATE TABLE IF NOT EXISTS webhook_events (
-  id           TEXT PRIMARY KEY,
-  received_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE IF NOT EXISTS password_resets(
+ id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ token_hash TEXT NOT NULL,expires_at TIMESTAMPTZ NOT NULL,used_at TIMESTAMPTZ
 );
-`;
-
-async function initSchema() {
-  await pool.query(SCHEMA);
+CREATE TABLE IF NOT EXISTS contacts(
+ id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ name TEXT NOT NULL,phone TEXT,email TEXT,source TEXT DEFAULT 'manuel',notes TEXT,
+ stage TEXT NOT NULL DEFAULT 'nouveau',temperature TEXT NOT NULL DEFAULT 'froid',
+ score INTEGER NOT NULL DEFAULT 0,language TEXT,ai_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+ hot_lead BOOLEAN NOT NULL DEFAULT FALSE,needs_human BOOLEAN NOT NULL DEFAULT FALSE,
+ window_expires_at TIMESTAMPTZ,last_contacted_at TIMESTAMPTZ,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS contacts_user_idx ON contacts(user_id);
+CREATE TABLE IF NOT EXISTS contact_activities(
+ id BIGSERIAL PRIMARY KEY,contact_id BIGINT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+ type TEXT NOT NULL,payload JSONB NOT NULL DEFAULT '{}'::jsonb,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS products(
+ id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ name TEXT NOT NULL,description TEXT,price NUMERIC(14,2),currency TEXT NOT NULL DEFAULT 'FCFA',
+ stock_count INTEGER,available BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+ updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS faqs(
+ id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ question TEXT NOT NULL,answer TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS segments(
+ id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ name TEXT NOT NULL,criteria JSONB NOT NULL DEFAULT '{}'::jsonb,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS sequences(
+ id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ name TEXT NOT NULL,goal TEXT NOT NULL DEFAULT 'relance',steps JSONB NOT NULL DEFAULT '[]'::jsonb,
+ active BOOLEAN NOT NULL DEFAULT FALSE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS sequence_tasks(
+ id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ sequence_id BIGINT REFERENCES sequences(id) ON DELETE CASCADE,contact_id BIGINT REFERENCES contacts(id) ON DELETE CASCADE,
+ due_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),message TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pending',
+ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS whatsapp_connections(
+ user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+ phone_number_id TEXT NOT NULL,access_token TEXT NOT NULL,display_phone_number TEXT,business_name TEXT,
+ ai_enabled BOOLEAN NOT NULL DEFAULT FALSE,use_catalog BOOLEAN NOT NULL DEFAULT TRUE,
+ take_orders BOOLEAN NOT NULL DEFAULT FALSE,answer_pricing BOOLEAN NOT NULL DEFAULT TRUE,
+ handoff_to_human BOOLEAN NOT NULL DEFAULT TRUE,tone TEXT NOT NULL DEFAULT 'commercial',
+ greeting_message TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS webhook_events(
+ id BIGSERIAL PRIMARY KEY,source TEXT NOT NULL,event_key TEXT UNIQUE,payload JSONB NOT NULL,received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS audit_log(
+ id BIGSERIAL PRIMARY KEY,admin_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+ action TEXT NOT NULL,target_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+ details JSONB NOT NULL DEFAULT '{}'::jsonb,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);`);
+  const adminEmail=(process.env.ADMIN_EMAIL||"").trim().toLowerCase();
+  if(adminEmail) await pool.query("UPDATE users SET is_admin=TRUE WHERE email=$1",[adminEmail]);
 }
-
-module.exports = { pool, initSchema };
+module.exports={pool,initSchema};

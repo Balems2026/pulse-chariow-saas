@@ -1,93 +1,36 @@
-# WhatsBiz Pro AI — Backend SaaS
+# AI Sales Cameroun — Backend final
 
-Backend Node.js/Express/PostgreSQL pour WhatsBiz Pro AI.
+Version alignée sur le Front-end final fourni.
 
-## Offre V1
+## Plans
+- Free : 15 générations/mois
+- Pro : 14 900 FCFA/mois — 500 générations/mois
+- Business : 39 900 FCFA/mois — 2 000 générations/mois
 
-### Free
-- 15 générations IA par mois
-- assistant commercial IA de base
-- réponses, reformulations et messages commerciaux simples
-- accès standard
+## Routes
+Auth, génération IA, CRM Contacts/Pipeline/Segments, Catalogue, FAQ,
+Séquences/Tâches, Analytics, Conversations WhatsApp, Agent IA WhatsApp,
+Administration, proxy Chariow et webhook Chariow.
 
-### Pro — 5 000 FCFA/mois
-- 300 générations IA par mois
-- fonctionnalités commerciales avancées
-- campagnes WhatsApp
-- séquences de relance
-- argumentaires de vente
-- analyse de conversations
-- réponses adaptées au profil du prospect
-- scripts de prospection
-- bibliothèque de modèles commerciaux (API prête)
-- statistiques d'utilisation
-- support prioritaire
-- accès aux futures fonctionnalités Pro
+## Déploiement
+Conserver le dépôt Git existant et son dossier `.git`. Remplacer le code
+par ce dossier, vérifier les variables Railway, commit puis push.
 
-La formule annuelle prévue est de 50 000 FCFA/an et utilise un cycle de 365 jours.
+Variables indispensables :
+DATABASE_URL, JWT_SECRET, ANTHROPIC_API_KEY, CORS_ORIGIN,
+CHARIOW_API_KEY, CHARIOW_WEBHOOK_SECRET,
+MONTHLY_PRODUCT_ID, YEARLY_PRODUCT_ID,
+BUSINESS_MONTHLY_PRODUCT_ID, BUSINESS_YEARLY_PRODUCT_ID,
+FREE_MONTHLY_QUOTA=15, PRO_MONTHLY_QUOTA=500, BUSINESS_MONTHLY_QUOTA=2000.
 
-## Endpoints principaux
+Pour l'activation Chariow, l'e-mail de l'achat doit être celui du compte
+AI Sales Cameroun. Le webhook essaie plusieurs emplacements de l'e-mail et
+du produit et journalise les candidats. Si Chariow n'envoie aucun produit
+identifiable, le Backend retourne product_unmatched au lieu de deviner.
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `POST /api/generate`
-- `GET /api/pro/features`
-- `GET /api/pro/stats`
-- `POST /api/webhooks/chariow`
-- `GET /health`
+Le Front-end final utilise /api/crm/*, /api/products, /api/faqs,
+/api/sequences, /api/tasks, /api/analytics/*, /api/whatsapp/* et
+/api/admin/*.
 
-### Génération IA
-
-`POST /api/generate` avec authentification Bearer et :
-
-```json
-{
-  "prompt": "Rédige un message pour vendre...",
-  "feature": "basic"
-}
-```
-
-Fonctionnalités Pro disponibles via `feature` :
-
-- `campaign`
-- `followup_sequence`
-- `sales_argument`
-- `conversation_analysis`
-- `prospect_profile`
-- `prospecting_script`
-- `template`
-- `stats` (consultation via `/api/pro/stats`)
-
-Le serveur contrôle le plan et le quota avant chaque génération. Une génération réussie consomme une unité, Free comme Pro.
-
-## Chariow
-
-Le endpoint Pulse est :
-
-`https://TON-DOMAINE-RAILWAY/api/webhooks/chariow`
-
-Dans Chariow :
-1. Créer un Pulse.
-2. Événement : **Vente réussie**.
-3. Appliquer au produit : **Oui**.
-4. Produit : **WhatsBiz Pro AI — Pro Mensuel**.
-5. URL : `https://pulse-chariow-saas-production.up.railway.app/api/webhooks/chariow`.
-
-Le backend attend le secret dans `CHARIOW_WEBHOOK_SECRET` et, par défaut, la signature dans `x-chariow-signature`. Vérifier le nom exact de l'en-tête et le format de signature fournis par l'interface Chariow avant la mise en production.
-
-Pour renforcer le filtrage, renseigner `CHARIOW_PRO_MONTHLY_PRODUCT_ID` et `CHARIOW_PRO_YEARLY_PRODUCT_ID` avec les identifiants produits Chariow.
-
-Le rapprochement du paiement avec un compte se fait actuellement par l'e-mail utilisé sur Chariow. Le client doit utiliser le même e-mail que celui de son compte WhatsBiz.
-
-## Base de données
-
-Les tables sont créées au démarrage. Le schéma conserve les utilisateurs, compteurs mensuels et événements webhook pour assurer l'idempotence.
-
-## Déploiement Railway
-
-Commande de démarrage : `npm start`.
-
-Variables minimales : `DATABASE_URL`, `JWT_SECRET`, `ANTHROPIC_API_KEY`, `CHARIOW_WEBHOOK_SECRET`, `FREE_MONTHLY_QUOTA=15`, `PRO_MONTHLY_QUOTA=300`, `PRO_CYCLE_DAYS=30`, `CORS_ORIGIN`.
-
-Après modification, pousser le dépôt GitHub connecté à Railway et attendre un nouveau déploiement.
+La traduction multilingue est supportée via /api/generate et dans les
+conversations. L'envoi WhatsApp réel nécessite un accès Meta Cloud API valide.
