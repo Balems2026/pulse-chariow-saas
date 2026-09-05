@@ -15,7 +15,6 @@ app.use("/api/faqs",require("./routes/faqs"));
 app.use("/api/sequences",require("./routes/sequences"));
 app.use("/api/tasks",require("./routes/tasks"));
 app.use("/api/analytics",require("./routes/analytics"));
-app.use("/api/whatsapp/onboarding",require("./routes/whatsapp_onboarding"));
 app.use("/api/whatsapp",require("./routes/whatsapp"));
 app.use("/api/admin",require("./routes/admin"));
 app.use("/api/chariow",require("./routes/chariow"));

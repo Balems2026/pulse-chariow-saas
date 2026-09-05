@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS sequence_tasks(
 );
 CREATE TABLE IF NOT EXISTS whatsapp_connections(
  user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
- waba_id TEXT,phone_number_id TEXT NOT NULL,access_token TEXT,access_token_enc TEXT,display_phone_number TEXT,business_name TEXT,connection_mode TEXT NOT NULL DEFAULT 'byo',meta_token_type TEXT,meta_status TEXT,
+ phone_number_id TEXT NOT NULL,access_token TEXT NOT NULL,display_phone_number TEXT,business_name TEXT,
  ai_enabled BOOLEAN NOT NULL DEFAULT FALSE,use_catalog BOOLEAN NOT NULL DEFAULT TRUE,
  take_orders BOOLEAN NOT NULL DEFAULT FALSE,answer_pricing BOOLEAN NOT NULL DEFAULT TRUE,
  handoff_to_human BOOLEAN NOT NULL DEFAULT TRUE,tone TEXT NOT NULL DEFAULT 'commercial',
@@ -75,11 +75,6 @@ CREATE TABLE IF NOT EXISTS audit_log(
  action TEXT NOT NULL,target_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
  details JSONB NOT NULL DEFAULT '{}'::jsonb,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );`);
-  await pool.query(`ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS waba_id TEXT;
-    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS access_token_enc TEXT;
-    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS connection_mode TEXT NOT NULL DEFAULT 'byo';
-    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS meta_token_type TEXT;
-    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS meta_status TEXT;`);
   const adminEmail=(process.env.ADMIN_EMAIL||"").trim().toLowerCase();
   if(adminEmail) await pool.query("UPDATE users SET is_admin=TRUE WHERE email=$1",[adminEmail]);
 }
