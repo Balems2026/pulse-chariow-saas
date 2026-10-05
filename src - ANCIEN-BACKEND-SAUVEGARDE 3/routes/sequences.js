@@ -1,6 +1,4 @@
 const express=require("express"),{requireAuth}=require("../auth"),{pool}=require("../db"),router=express.Router();
-const {requirePlanFeature}=require("../plan");
-router.use(requireAuth,requirePlanFeature("crm"));
 router.get("/",requireAuth,async(req,res)=>{try{res.json({sequences:(await pool.query("SELECT * FROM sequences WHERE user_id=$1 ORDER BY created_at DESC",[req.userId])).rows});}catch(e){res.status(500).json({message:"Erreur serveur."});}});
 router.post("/",requireAuth,async(req,res)=>{try{const{name,goal,steps}=req.body||{};if(!name||!Array.isArray(steps)||!steps.length)return res.status(400).json({message:"Nom et étapes requis."});const{rows}=await pool.query("INSERT INTO sequences(user_id,name,goal,steps) VALUES($1,$2,$3,$4) RETURNING *",[req.userId,name,goal||"relance",steps]);res.json({sequence:rows[0]});}catch(e){res.status(500).json({message:"Erreur serveur."});}});
 router.patch("/:id",requireAuth,async(req,res)=>{try{const{rows}=await pool.query("UPDATE sequences SET active=COALESCE($1,active),updated_at=NOW() WHERE id=$2 AND user_id=$3 RETURNING *",[req.body.active,req.params.id,req.userId]);if(!rows.length)return res.status(404).json({message:"Séquence introuvable."});res.json({sequence:rows[0]});}catch(e){res.status(500).json({message:"Erreur serveur."});}});

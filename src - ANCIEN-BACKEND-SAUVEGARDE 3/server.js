@@ -18,7 +18,6 @@ app.use("/api/analytics",require("./routes/analytics"));
 app.use("/api/whatsapp/onboarding",require("./routes/whatsapp_onboarding"));
 app.use("/api/whatsapp",require("./routes/whatsapp"));
 app.use("/api/admin",require("./routes/admin"));
-app.use("/api/advertising",require("./routes/advertising"));
 app.use("/api/chariow",require("./routes/chariow"));
 const PORT=process.env.PORT||8080;
 initSchema().then(()=>app.listen(PORT,()=>console.log(`AI Sales Cameroun backend en écoute sur le port ${PORT}`))).catch(e=>{console.error("Impossible d'initialiser la base de données :",e);process.exit(1);});

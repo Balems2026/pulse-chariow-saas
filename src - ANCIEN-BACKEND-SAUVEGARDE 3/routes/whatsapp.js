@@ -2,8 +2,6 @@ const express=require('express'),{requireAuth}=require('../auth'),{pool}=require
 const {decryptSecret}=require('../lib/secretBox');
 const {sendText}=require('../lib/meta');
 const router=express.Router();
-const {requirePlanFeature}=require("../plan");
-router.use(requireAuth,requirePlanFeature("whatsapp_agent"));
 
 async function requireBusinessUser(id){
   const u=await getUser(id);

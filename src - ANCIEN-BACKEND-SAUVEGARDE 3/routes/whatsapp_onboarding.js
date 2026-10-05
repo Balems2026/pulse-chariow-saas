@@ -5,8 +5,6 @@ const { getUser } = require('../plan');
 const { encryptSecret } = require('../lib/secretBox');
 const { exchangeEmbeddedSignupCode, getPhoneNumber, subscribeWaba, debugToken } = require('../lib/meta');
 const router = express.Router();
-const {requirePlanFeature}=require("../plan");
-router.use(requireAuth,requirePlanFeature("whatsapp_agent"));
 
 function requireBusiness(req, res, next) {
   getUser(req.userId).then(u => {
