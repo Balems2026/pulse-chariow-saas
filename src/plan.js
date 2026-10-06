@@ -9,7 +9,7 @@ function canUseFeature(plan,feature){
 }
 function requirePlanFeature(feature){return async(req,res,next)=>{try{const u=await getUser(req.userId);if(!u)return res.status(401).json({message:"Session invalide."});assertFeatureAccess(u,feature);next();}catch(e){res.status(e.status||500).json({message:e.message||"Erreur serveur.",code:e.code||"plan_feature_error"});}};}
 function assertFeatureAccess(user,feature){
-  const plan=user?.plan||"free";
+  const plan=user?.is_admin?"business":(user?.plan||"free");
   if(canUseFeature(plan,feature)) return true;
   const err=Object.assign(new Error(plan==="free"?"Cette fonctionnalité est réservée au plan Pro ou Business.":"Cette fonctionnalité n'est pas disponible sur votre plan."),{status:403,code:"plan_feature_required"});
   throw err;
@@ -17,7 +17,7 @@ function assertFeatureAccess(user,feature){
 const periodNow=()=>new Date().toISOString().slice(0,7);
 async function ensureUsage(userId){const p=periodNow();await pool.query("INSERT INTO usage_monthly(user_id,period,count) VALUES($1,$2,0) ON CONFLICT(user_id,period) DO NOTHING",[userId,p]);const {rows}=await pool.query("SELECT count FROM usage_monthly WHERE user_id=$1 AND period=$2",[userId,p]);return rows[0]?.count||0;}
 async function getUser(id){const {rows}=await pool.query("SELECT * FROM users WHERE id=$1",[id]);return rows[0]||null;}
-async function getPlanInfo(user){let plan=user.plan||"free";if(plan!=="free"&&user.plan_expires_at&&new Date(user.plan_expires_at)<=new Date()){await pool.query("UPDATE users SET plan='free',plan_expires_at=NULL WHERE id=$1",[user.id]);plan="free";}const used=await ensureUsage(user.id),quota=LIMITS[plan]||LIMITS.free;return {plan,planExpiresAt:plan==="free"?null:user.plan_expires_at,quota,used,remaining:Math.max(0,quota-used),quotaReached:used>=quota,isAdmin:!!user.is_admin};}
+async function getPlanInfo(user){const isAdmin=!!user.is_admin;let plan=isAdmin?"business":(user.plan||"free");if(!isAdmin&&plan!=="free"&&user.plan_expires_at&&new Date(user.plan_expires_at)<=new Date()){await pool.query("UPDATE users SET plan='free',plan_expires_at=NULL WHERE id=$1",[user.id]);plan="free";}const used=await ensureUsage(user.id),quota=LIMITS[plan]||LIMITS.free;return {plan,planExpiresAt:isAdmin?null:(plan==="free"?null:user.plan_expires_at),quota,used,remaining:Math.max(0,quota-used),quotaReached:used>=quota,isAdmin};}
 async function summarize(user){const i=await getPlanInfo(user);return {id:user.id,email:user.email,plan:i.plan,planExpiresAt:i.planExpiresAt,quota:i.quota,used:i.used,remaining:i.remaining,quotaReached:i.quotaReached,isAdmin:i.isAdmin,suspended:!!user.suspended};}
 async function consumeGeneration(id){const u=await getUser(id);if(!u||u.suspended)throw Object.assign(new Error("Compte indisponible."),{status:403});const i=await getPlanInfo(u);if(i.quotaReached)throw Object.assign(new Error("Quota mensuel atteint. Passez au plan supérieur pour continuer."),{status:402});const p=periodNow();const {rows}=await pool.query("UPDATE usage_monthly SET count=count+1 WHERE user_id=$1 AND period=$2 AND count<$3 RETURNING count",[id,p,i.quota]);if(!rows.length)throw Object.assign(new Error("Quota mensuel atteint."),{status:402});return rows[0].count;}
 async function setPlanByEmail(email,plan,days){const e=String(email||"").trim().toLowerCase();if(!e)return null;const expires=plan==="free"?null:new Date(Date.now()+days*86400000);const {rows}=await pool.query("UPDATE users SET plan=$1,plan_expires_at=$2 WHERE lower(email)=lower($3) RETURNING *",[plan,expires,e]);return rows[0]||null;}
