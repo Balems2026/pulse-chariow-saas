@@ -1,7 +1,7 @@
 const express = require('express');
 const { requireAuth } = require('../auth');
 const { pool } = require('../db');
-const { getUser } = require('../plan');
+const { getUser,effectivePlan } = require('../plan');
 const { encryptSecret } = require('../lib/secretBox');
 const { exchangeEmbeddedSignupCode, getPhoneNumber, subscribeWaba, debugToken } = require('../lib/meta');
 const router = express.Router();
@@ -11,7 +11,7 @@ router.use(requireAuth,requirePlanFeature("whatsapp_agent"));
 function requireBusiness(req, res, next) {
   getUser(req.userId).then(u => {
     if (!u) return res.status(401).json({ message: 'Session invalide.' });
-    if (u.plan !== 'business' || (u.plan_expires_at && new Date(u.plan_expires_at) <= new Date())) {
+    if (effectivePlan(u) !== 'business') {
       return res.status(403).json({ message: 'La connexion WhatsApp autonome est réservée au plan Business.' });
     }
     req.currentUser = u; next();
