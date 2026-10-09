@@ -91,7 +91,18 @@ CREATE TABLE IF NOT EXISTS audit_log(
     ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS access_token_enc TEXT;
     ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS connection_mode TEXT NOT NULL DEFAULT 'byo';
     ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS meta_token_type TEXT;
-    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS meta_status TEXT;`);
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS meta_status TEXT;
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS ai_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS use_catalog BOOLEAN NOT NULL DEFAULT TRUE;
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS take_orders BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS answer_pricing BOOLEAN NOT NULL DEFAULT TRUE;
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS handoff_to_human BOOLEAN NOT NULL DEFAULT TRUE;
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS tone TEXT NOT NULL DEFAULT 'commercial';
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS greeting_message TEXT;
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    ALTER TABLE whatsapp_connections ALTER COLUMN access_token DROP NOT NULL;
+`);
   const adminEmail=(process.env.ADMIN_EMAIL||"").trim().toLowerCase();
   if(adminEmail) await pool.query("UPDATE users SET is_admin=TRUE WHERE email=$1",[adminEmail]);
 }

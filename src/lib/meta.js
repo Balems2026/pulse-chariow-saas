@@ -24,7 +24,7 @@ async function exchangeEmbeddedSignupCode(code) {
   if (!appId || !appSecret) throw new Error('META_APP_ID et META_APP_SECRET doivent être configurés.');
   const query = { client_id: appId, client_secret: appSecret, code };
   if ((process.env.META_REDIRECT_URI || '').trim()) query.redirect_uri = process.env.META_REDIRECT_URI.trim();
-  return graph('/oauth/access_token', { method: 'POST', query });
+  return graph('/oauth/access_token', { method: 'GET', query });
 }
 
 async function getPhoneNumber(phoneNumberId, token) {
